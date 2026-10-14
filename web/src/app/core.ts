@@ -17,10 +17,16 @@ export class Auth {
   get token() { return read(TOKEN); }
 
   async login(email: string, password: string) {
-    const r: any = await firstValueFrom(this.http.post('/api/auth/login', { email, password }));
+    this.start(await firstValueFrom(this.http.post('/api/auth/login', { email, password })));
+    await this.refresh();
+  }
+  async register(name: string, email: string, password: string) {
+    this.start(await firstValueFrom(this.http.post('/api/auth/register', { name, email, password })));
+    await this.refresh();
+  }
+  private start(r: any) {
     localStorage.setItem(TOKEN, r.token);
     this.setUser(r.user);
-    await this.refresh();
   }
   async refresh() {
     const u: any = await firstValueFrom(this.http.get('/api/auth/me'));
