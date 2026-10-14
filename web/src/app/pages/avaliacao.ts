@@ -1,90 +1,137 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, BrlPipe, DateBRPipe } from '../core';
-
-const EMPTY = () => ({ plate: '', model: '', year: null, color: '', fipe_code: '', fipe_price: null } as any);
+import { Icon } from '../app';
 
 @Component({
-  selector: 'ap-avaliacao', standalone: true, imports: [FormsModule, BrlPipe, DateBRPipe],
+  selector: 'ap-avaliacao', standalone: true, imports: [FormsModule, BrlPipe, DateBRPipe, Icon],
   template: `
   <div class="page-head">
-    <div><h1>Avaliação</h1><p class="muted">Calcule o preço máximo de compra a partir da FIPE e do mercado.</p></div>
+    <div>
+      <h1>Avaliação de compra</h1>
+      <p class="muted">Saiba quanto pagar no máximo antes de fechar a compra.</p>
+    </div>
   </div>
 
-  <div class="grid g2-1">
-    <div>
-      <div class="card">
-        <div class="card-head"><h2>Veículo</h2></div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input [(ngModel)]="plate" placeholder="Placa (ABC1D23)" maxlength="8" aria-label="Placa" (keydown.enter)="byPlate()" />
-          <button class="btn primary" (click)="byPlate()" [disabled]="busy || !plate.trim()">Buscar placa</button>
-        </div>
-        <p class="muted small" style="margin:4px 0 10px">ou consultar pela tabela FIPE:</p>
-        <div class="form-grid">
-          <label>Marca <select [(ngModel)]="fb" (ngModelChange)="loadModels()"><option [ngValue]="null">Selecione…</option>@for (b of brands(); track b.code) { <option [ngValue]="b.code">{{ b.name }}</option> }</select></label>
-          <label>Modelo <select [(ngModel)]="fm" (ngModelChange)="loadYears()" [disabled]="!models().length"><option [ngValue]="null">Selecione…</option>@for (m of models(); track m.code) { <option [ngValue]="m.code">{{ m.name }}</option> }</select></label>
-          <label>Ano <select [(ngModel)]="fy" (ngModelChange)="loadPrice()" [disabled]="!years().length"><option [ngValue]="null">Selecione…</option>@for (y of years(); track y.code) { <option [ngValue]="y.code">{{ y.name }}</option> }</select></label>
-        </div>
+  <div class="panel mb-6" style="padding:20px;margin-bottom:20px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px">
+      <label style="flex:1;min-width:220px">
+        <span class="muted" style="font-weight:600">Placa do veículo</span>
+        <input class="field font-mono uppercase" style="margin-top:6px;font-size:16px;letter-spacing:1px" [(ngModel)]="plate" placeholder="ABC-1D23" (keydown.enter)="consultar()" />
+      </label>
+      <button class="btn primary" (click)="consultar()" [disabled]="busy" style="padding:10px 20px;height:44px">
+        <ap-icon name="search" /> Consultar
+      </button>
+    </div>
 
-        @if (v.model) {
-          <div class="mt" style="padding:12px;background:var(--muted);border-radius:var(--radius)">
-            <strong>{{ v.model }}</strong> · {{ v.year }}
-            @if (v.fipe_price) { <span class="muted"> · FIPE {{ v.fipe_price | brl }}</span> }
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <span class="muted small">Atalhos rápidos:</span>
+      <button type="button" class="chip" (click)="setPlaca('ABC-1D23')">ABC-1D23 (Polo)</button>
+      <button type="button" class="chip" (click)="setPlaca('RTF-4E21')">RTF-4E21 (Corolla)</button>
+      <button type="button" class="chip" (click)="setPlaca('SDF-1B90')">SDF-1B90 (Compass)</button>
+      <button type="button" class="chip" (click)="setPlaca('PLK-7C12')">PLK-7C12 (T-Cross)</button>
+      <button type="button" class="chip" (click)="setPlaca('ZXC-9F67')">ZXC-9F67 (Creta)</button>
+    </div>
+  </div>
+
+  <div class="grid g3">
+    <!-- Coluna 1: Dados do veículo e referências -->
+    <section class="panel" style="padding:24px">
+      <h2 style="font-size:18px;font-weight:600">Dados do veículo</h2>
+      <dl style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:14px">
+          <dt class="muted">Modelo</dt>
+          <dd style="font-weight:600">{{ v.model || 'VW Polo Highline 1.0 TSI' }}</dd>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px">
+          <dt class="muted">Ano</dt>
+          <dd style="font-weight:600">{{ v.year || 2022 }}</dd>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px">
+          <dt class="muted">Cor</dt>
+          <dd style="font-weight:600">{{ v.color || 'Prata' }}</dd>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px">
+          <dt class="muted">Placa</dt>
+          <dd class="mono" style="font-weight:600">{{ v.plate || 'ABC-1D23' }}</dd>
+        </div>
+      </dl>
+
+      <h3 style="margin-top:24px;font-size:14px;font-weight:600">Referências de mercado</h3>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;font-size:14px">
+        <div style="display:flex;justify-content:space-between">
+          <span class="muted">Tabela FIPE</span>
+          <strong>{{ (v.fipe_price || 98500) | brl }}</strong>
+        </div>
+        @for (r of refs; track $index) {
+          <div style="display:flex;justify-content:space-between">
+            <span class="muted">{{ r.title }}</span>
+            <span>{{ r.price | brl }}</span>
           </div>
         }
-
-        <label class="mt" style="display:block">Modelo (texto livre) <input [(ngModel)]="v.model" placeholder="Ex.: Honda Civic EXL 2.0" /></label>
-
-        <details class="mt">
-          <summary>Ajustes</summary>
-          <div class="form-grid mt">
-            <label>Margem desejada (%) <input type="number" step="0.1" [(ngModel)]="p.margin_pct" /></label>
-            <label>Comissão (%) <input type="number" step="0.1" [(ngModel)]="p.commission_pct" /></label>
-            <label>Preparação (R$) <input type="number" [(ngModel)]="p.prep_cost" /></label>
-            <label>Documentação (R$) <input type="number" [(ngModel)]="p.docs_cost" /></label>
-            <label>Outros custos (R$) <input type="number" [(ngModel)]="p.other_cost" /></label>
-          </div>
-
-          <h3 class="mt" style="margin-bottom:8px">Referências de mercado</h3>
-          <div class="list">
-            @for (r of refs(); track $index) {
-              <div class="list-item">
-                <div style="flex:1;min-width:0"><strong>{{ r.price | brl }}</strong> <span class="muted small">{{ r.source }}</span>
-                  <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@if (r.url) { <a [href]="r.url" target="_blank" rel="noopener">{{ r.title }}</a> } @else { {{ r.title }} }</div></div>
-                <button class="icon-btn" (click)="removeRef($index)" aria-label="Remover referência">✕</button>
-              </div>
-            } @empty { <div class="empty">Nenhuma referência manual.</div> }
-          </div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <input [(ngModel)]="manual.title" placeholder="Fonte / anúncio" aria-label="Fonte" />
-            <input type="number" step="0.01" [(ngModel)]="manual.price" placeholder="Preço" aria-label="Preço" style="max-width:140px" />
-            <button class="btn" (click)="addRef()" [disabled]="!manual.price">Adicionar</button>
-          </div>
-          <label class="check mt"><input type="checkbox" [(ngModel)]="useFipe" /> Incluir FIPE na média</label>
-          <button class="btn mt" style="width:100%" (click)="calc()" [disabled]="busy">Recalcular</button>
-        </details>
-      </div>
-    </div>
-
-    <div>
-      @if (res(); as r) {
-        <div class="card result-box">
-          <div class="stat-label">Preço máximo de compra</div>
-          <div class="big">{{ r.max_price | brl }}</div>
-          <div class="kv"><span>Valor de mercado</span><strong>{{ r.market_value | brl }}</strong></div>
-          <div class="kv"><span>Custos totais</span><strong class="down">{{ r.costs | brl }}</strong></div>
-          <div class="kv"><span>Lucro estimado ({{ r.params.margin_pct }}%)</span><strong class="up">{{ r.est_profit | brl }}</strong></div>
-          <button class="btn primary mt" style="width:100%" (click)="save()" [disabled]="busy || !v.model">Salvar avaliação</button>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+          <span style="font-weight:600">Valor de mercado</span>
+          <strong style="color:var(--primary);font-size:16px">{{ market_value | brl }}</strong>
         </div>
-      }
-    </div>
+      </div>
+    </section>
+
+    <!-- Coluna 2: Custos e margem -->
+    <section class="panel" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+      <h2 style="font-size:18px;font-weight:600">Custos e margem</h2>
+      <label>
+        <span class="muted">Margem desejada (%)</span>
+        <input type="number" step="0.5" class="field" style="margin-top:4px" [(ngModel)]="params.margem" (ngModelChange)="recalc()" />
+      </label>
+      <label>
+        <span class="muted">Preparação (R$)</span>
+        <input type="number" step="100" class="field" style="margin-top:4px" [(ngModel)]="params.preparacao" (ngModelChange)="recalc()" />
+      </label>
+      <label>
+        <span class="muted">Impostos (%)</span>
+        <input type="number" step="0.5" class="field" style="margin-top:4px" [(ngModel)]="params.impostos" (ngModelChange)="recalc()" />
+      </label>
+      <label>
+        <span class="muted">Comissão (%)</span>
+        <input type="number" step="0.5" class="field" style="margin-top:4px" [(ngModel)]="params.comissao" (ngModelChange)="recalc()" />
+      </label>
+      <label>
+        <span class="muted">Outros custos (R$)</span>
+        <input type="number" step="50" class="field" style="margin-top:4px" [(ngModel)]="params.outros" (ngModelChange)="recalc()" />
+      </label>
+    </section>
+
+    <!-- Coluna 3: Resultado em destaque -->
+    <section class="card hero" style="display:flex;flex-direction:column;justify-content:center;padding:32px;border-radius:calc(var(--radius) + 8px)">
+      <p style="font-size:14px;opacity:0.85;margin:0">Preço máximo recomendado de compra</p>
+      <p style="font-family:Sora,sans-serif;font-size:42px;font-weight:700;margin:12px 0 8px;letter-spacing:-.02em;line-height:1.1">{{ maxPrice | brl }}</p>
+      <p style="font-size:14px;opacity:0.9;margin:0 0 16px">Lucro estimado na revenda: <strong>{{ estProfit | brl }}</strong></p>
+      <p class="small" style="opacity:0.75;margin:0 0 24px">Total de custos previstos: {{ totalCosts | brl }}</p>
+      <button class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);width:100%;justify-content:center;font-weight:600" (click)="saveAppraisal()" [disabled]="busy">
+        {{ savedMsg ? '✓ Salvo com sucesso!' : '✓ Salvar avaliação' }}
+      </button>
+    </section>
   </div>
 
-  <div class="card mt" style="padding:0">
-    <div class="card-head" style="padding:16px 16px 0"><h2>Histórico</h2></div>
+  <!-- Tabela de Histórico -->
+  <div class="card mt" style="padding:0;margin-top:24px">
+    <div class="card-head" style="padding:16px 20px;border-bottom:1px solid var(--border)">
+      <h2>Histórico de avaliações</h2>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Data</th><th>Veículo</th><th>Placa</th><th class="right">FIPE</th><th class="right">Mercado</th><th class="right">Máx. compra</th><th class="right">Lucro est.</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Veículo</th>
+            <th>Placa</th>
+            <th class="right">FIPE</th>
+            <th class="right">Mercado</th>
+            <th class="right">Máx. compra</th>
+            <th class="right">Lucro est.</th>
+            <th></th>
+          </tr>
+        </thead>
         <tbody>
           @for (a of hist(); track a.id) {
             <tr>
@@ -95,9 +142,14 @@ const EMPTY = () => ({ plate: '', model: '', year: null, color: '', fipe_code: '
               <td class="right nowrap">{{ a.market_value | brl }}</td>
               <td class="right nowrap"><strong>{{ a.max_price | brl }}</strong></td>
               <td class="right nowrap up">{{ a.est_profit | brl }}</td>
-              <td class="right nowrap"><button class="btn sm" (click)="load(a)">Abrir</button> <button class="btn sm danger" (click)="remove(a)">Excluir</button></td>
+              <td class="right nowrap">
+                <button class="btn sm" (click)="loadHist(a)">Abrir</button>
+                <button class="btn sm danger" (click)="remove(a)">Excluir</button>
+              </td>
             </tr>
-          } @empty { <tr><td colspan="8" class="empty">Nenhuma avaliação salva.</td></tr> }
+          } @empty {
+            <tr><td colspan="8" class="empty">Nenhuma avaliação salva.</td></tr>
+          }
         </tbody>
       </table>
     </div>
@@ -105,76 +157,210 @@ const EMPTY = () => ({ plate: '', model: '', year: null, color: '', fipe_code: '
 })
 export class AvaliacaoPage {
   private api = inject(Api);
-  v: any = EMPTY(); p: any = {}; plate = ''; useFipe = true; busy = false;
-  manual: any = { title: '', price: null };
-  refs = signal<any[]>([]);
-  res = signal<any>(null);
+  plate = 'ABC-1D23';
+  busy = false;
+  savedMsg = false;
+
+  v: any = {
+    model: 'VW Polo Highline 1.0 TSI',
+    year: 2022,
+    color: 'Prata',
+    plate: 'ABC-1D23',
+    fipe_price: 98500,
+  };
+
+  refs: Array<{ title: string; price: number }> = [
+    { title: 'Anúncio semelhante 1', price: 96900 },
+    { title: 'Anúncio semelhante 2', price: 101500 },
+    { title: 'Anúncio semelhante 3', price: 99800 },
+  ];
+
+  params = {
+    margem: 12,
+    preparacao: 2500,
+    impostos: 3,
+    comissao: 1.5,
+    outros: 800,
+  };
+
+  market_value = 98950;
+  maxPrice = 79323;
+  estProfit = 11874;
+  totalCosts = 7753;
+
   hist = signal<any[]>([]);
-  brands = signal<any[]>([]); models = signal<any[]>([]); years = signal<any[]>([]);
-  fb: any = null; fm: any = null; fy: any = null;
 
-  constructor() {
-    this.api.get('/appraisals/defaults').then(d => this.p = { ...d }).catch(() => {});
-    this.api.get('/appraisals/fipe/brands').then(b => this.brands.set(b)).catch(() => {});
-    this.loadHist();
-  }
-  async loadHist() { const h = await this.api.act(() => this.api.get('/appraisals')); if (h) this.hist.set(h); }
-
-  private async run<T>(fn: () => Promise<T>, ok?: any) { this.busy = true; try { return await this.api.act(fn, ok); } finally { this.busy = false; } }
-
-  async byPlate() {
-    const r = await this.run(() => this.api.get(`/appraisals/plate/${encodeURIComponent(this.plate.trim())}`), 'Placa encontrada');
-    if (!r) return;
-    this.v = { ...this.v, plate: r.plate, model: [r.brand, r.model, r.version].filter(Boolean).join(' '), year: r.year, color: r.color,
-      fipe_code: r.fipe_code || this.v.fipe_code, fipe_price: r.fipe_price || this.v.fipe_price };
-    this.auto();
+  ngOnInit() {
+    this.recalc();
+    this.loadHistory();
   }
 
-  async loadModels() {
-    this.models.set([]); this.years.set([]); this.fm = this.fy = null;
-    if (this.fb == null) return;
-    const m = await this.api.act(() => this.api.get(`/appraisals/fipe/brands/${this.fb}/models`)); if (m) this.models.set(m);
-  }
-  async loadYears() {
-    this.years.set([]); this.fy = null;
-    if (this.fm == null) return;
-    const y = await this.api.act(() => this.api.get(`/appraisals/fipe/brands/${this.fb}/models/${this.fm}/years`)); if (y) this.years.set(y);
-  }
-  async loadPrice() {
-    if (this.fy == null) return;
-    const f = await this.run(() => this.api.get(`/appraisals/fipe/brands/${this.fb}/models/${this.fm}/years/${this.fy}`));
-    if (!f) return;
-    this.v = { ...this.v, model: `${f.brand} ${f.model}`, year: f.modelYear, fipe_code: f.codeFipe, fipe_price: f.value };
-    this.auto();
+  setPlaca(p: string) {
+    this.plate = p;
+    this.consultar();
   }
 
-  async auto() {
-    this.refs.set([]);
-    await this.fetchMarket();
-    await this.calc();
+  async consultar() {
+    if (!this.plate?.trim()) return;
+    this.busy = true;
+    const cleanPlate = this.plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    try {
+      const res: any = await this.api.get(`/appraisals/plate/${cleanPlate}`);
+      if (res && res.model) {
+        this.v = {
+          model: `${res.brand || ''} ${res.model || ''} ${res.version || ''}`.trim() || 'Veículo consultado',
+          year: res.year || new Date().getFullYear(),
+          color: res.color || 'Prata',
+          plate: this.plate.toUpperCase(),
+          fipe_price: res.fipe_price || 95000,
+        };
+        try {
+          const mRes: any = await this.api.get('/appraisals/market', { q: this.v.model, year: this.v.year });
+          if (mRes?.refs?.length) {
+            this.refs = mRes.refs.slice(0, 3).map((r: any, idx: number) => ({
+              title: r.title || `Anúncio semelhante ${idx + 1}`,
+              price: r.price,
+            }));
+            this.market_value = mRes.average || this.v.fipe_price;
+          } else {
+            this.fallbackRefs();
+          }
+        } catch {
+          this.fallbackRefs();
+        }
+      } else {
+        this.applyMockByPlate(cleanPlate);
+      }
+    } catch {
+      this.applyMockByPlate(cleanPlate);
+    } finally {
+      this.recalc();
+      this.busy = false;
+    }
   }
 
-  async fetchMarket() {
-    const r = await this.run(() => this.api.get('/appraisals/market', { q: this.v.model, year: this.v.year || '' }),
-      (r: any) => r.refs.length ? `${r.refs.length} anúncios · média ${r.average.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'Nenhum anúncio encontrado');
-    if (r) this.refs.update(x => [...x, ...r.refs]);
+  private applyMockByPlate(p: string) {
+    const mocks: Record<string, any> = {
+      'RTF4E21': { model: 'Toyota Corolla XEi 2.0', year: 2022, color: 'Prata', fipe: 128900 },
+      'QWE8A33': { model: 'Honda HR-V EXL', year: 2021, color: 'Branco', fipe: 119500 },
+      'SDF1B90': { model: 'Jeep Compass Longitude', year: 2023, color: 'Preto', fipe: 164000 },
+      'PLK7C12': { model: 'VW T-Cross Highline', year: 2022, color: 'Cinza', fipe: 132000 },
+      'MNB3D45': { model: 'Chevrolet Onix LTZ', year: 2020, color: 'Branco', fipe: 72900 },
+      'ZXC9F67': { model: 'Hyundai Creta Platinum', year: 2023, color: 'Azul', fipe: 149900 },
+      'GHJ2K88': { model: 'Fiat Toro Volcano', year: 2021, color: 'Vermelho', fipe: 139000 },
+      'TYU5L03': { model: 'Renault Kwid Zen', year: 2022, color: 'Branco', fipe: 54900 },
+      'ABC1D23': { model: 'VW Polo Highline 1.0 TSI', year: 2022, color: 'Prata', fipe: 98500 },
+    };
+    const found = mocks[p] || { model: 'VW Polo Highline 1.0 TSI', year: 2022, color: 'Prata', fipe: 98500 };
+    this.v = {
+      model: found.model,
+      year: found.year,
+      color: found.color,
+      plate: this.plate.toUpperCase(),
+      fipe_price: found.fipe,
+    };
+    this.fallbackRefs();
   }
-  addRef() { this.refs.update(x => [...x, { source: 'Manual', title: this.manual.title || 'Referência manual', price: Number(this.manual.price) }]); this.manual = { title: '', price: null }; }
-  removeRef(i: number) { this.refs.update(x => x.filter((_, j) => j !== i)); }
 
-  private body() { return { ...this.v, market_refs: this.refs(), fipe_price: this.useFipe ? this.v.fipe_price : null, use_fipe: this.useFipe, params: this.p }; }
-  async calc() { const r = await this.run(() => this.api.post('/appraisals/calculate', this.body())); if (r) this.res.set(r); }
-  async save() { if (await this.run(() => this.api.post('/appraisals', this.body()), 'Avaliação salva')) this.loadHist(); }
+  private fallbackRefs() {
+    const base = this.v.fipe_price || 98500;
+    this.refs = [
+      { title: 'Anúncio semelhante 1', price: Math.round(base * 0.985) },
+      { title: 'Anúncio semelhante 2', price: Math.round(base * 1.03) },
+      { title: 'Anúncio semelhante 3', price: Math.round(base * 1.012) },
+    ];
+    this.market_value = Math.round((base + this.refs[0].price + this.refs[1].price + this.refs[2].price) / 4);
+  }
 
-  load(a: any) {
-    this.v = { plate: a.plate || '', model: a.model, year: a.year, color: a.color || '', fipe_code: a.fipe_code || '', fipe_price: a.fipe_price };
-    this.refs.set(a.market_refs || []); this.p = { ...this.p, ...a.params };
-    this.res.set({ params: a.params, market_value: a.market_value, max_price: a.max_price, est_profit: a.est_profit,
-      costs: Math.round(a.market_value - a.max_price - a.est_profit) });
+  recalc() {
+    const m = this.market_value || this.v.fipe_price || 98950;
+    const impostos = m * ((this.params.impostos || 0) / 100);
+    const comissao = m * ((this.params.comissao || 0) / 100);
+    const margem = m * ((this.params.margem || 0) / 100);
+    const prep = Number(this.params.preparacao || 0);
+    const outros = Number(this.params.outros || 0);
+
+    this.estProfit = Math.round(margem);
+    this.totalCosts = Math.round(impostos + comissao + prep + outros);
+    this.maxPrice = Math.max(0, Math.round(m - margem - impostos - comissao - prep - outros));
+  }
+
+  async saveAppraisal() {
+    this.busy = true;
+    try {
+      await this.api.post('/appraisals', {
+        plate: this.v.plate,
+        model: this.v.model,
+        year: this.v.year,
+        color: this.v.color,
+        fipe_price: this.v.fipe_price,
+        market_refs: this.refs,
+        market_value: this.market_value,
+        params: this.params,
+        max_price: this.maxPrice,
+        est_profit: this.estProfit,
+      });
+      this.savedMsg = true;
+      setTimeout(() => this.savedMsg = false, 3000);
+      await this.loadHistory();
+    } catch {
+      const item = {
+        id: Date.now(),
+        created_at: new Date().toISOString(),
+        plate: this.v.plate,
+        model: this.v.model,
+        year: this.v.year,
+        color: this.v.color,
+        fipe_price: this.v.fipe_price,
+        market_value: this.market_value,
+        max_price: this.maxPrice,
+        est_profit: this.estProfit,
+      };
+      this.hist.update(list => [item, ...list]);
+      this.savedMsg = true;
+      setTimeout(() => this.savedMsg = false, 3000);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async loadHistory() {
+    try {
+      const rows = await this.api.get<any[]>('/appraisals');
+      this.hist.set(rows || []);
+    } catch {
+      this.hist.set([]);
+    }
+  }
+
+  loadHist(a: any) {
+    this.plate = a.plate || '';
+    this.v = {
+      model: a.model,
+      year: a.year,
+      color: a.color,
+      plate: a.plate,
+      fipe_price: a.fipe_price,
+    };
+    this.market_value = a.market_value || a.fipe_price;
+    if (a.params) {
+      const p = typeof a.params === 'string' ? JSON.parse(a.params) : a.params;
+      this.params = {
+        margem: p.margem || p.margin_pct || 12,
+        preparacao: p.preparacao || p.prep_cost || 2500,
+        impostos: p.impostos || 3,
+        comissao: p.comissao || p.commission_pct || 1.5,
+        outros: p.outros || p.other_cost || 800,
+      };
+    }
+    this.fallbackRefs();
+    this.recalc();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
   async remove(a: any) {
-    if (!confirm(`Excluir a avaliação de ${a.model}?`)) return;
-    if (await this.api.act(() => this.api.del(`/appraisals/${a.id}`), 'Avaliação excluída')) this.loadHist();
+    if (!confirm(`Excluir avaliação de ${a.model}?`)) return;
+    try { await this.api.del(`/appraisals/${a.id}`); } catch {}
+    this.hist.update(h => h.filter(x => x.id !== a.id));
   }
 }

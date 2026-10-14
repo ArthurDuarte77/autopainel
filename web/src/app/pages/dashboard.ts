@@ -2,9 +2,10 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api, BrlPipe, MONTHS, thisMonth, thousands } from '../core';
+import { Icon } from '../app';
 
 @Component({
-  selector: 'ap-dashboard', standalone: true, imports: [FormsModule, RouterLink, BrlPipe],
+  selector: 'ap-dashboard', standalone: true, imports: [FormsModule, RouterLink, BrlPipe, Icon],
   template: `
   @if (d(); as d) {
     <div class="page-head">
@@ -13,11 +14,11 @@ import { Api, BrlPipe, MONTHS, thisMonth, thousands } from '../core';
     </div>
 
     <div class="grid g4">
-      <div class="card">
+      <div class="card hero">
         <div class="stat-label">Faturamento no mês</div>
         <div class="stat-value">{{ d.revenue.value | brl }}</div>
-        <div class="progress"><span [style.width.%]="min(d.revenue.pct, 100)"></span></div>
-        <div class="small muted mt" style="margin-top:6px">Meta: {{ k(d.revenue.goal) }} ({{ d.revenue.pct }}%)</div>
+        <div class="progress" style="background:rgba(255,255,255,0.25)"><span [style.width.%]="min(d.revenue.pct, 100)" style="background:#fff"></span></div>
+        <div class="small mt" style="margin-top:6px;opacity:.85">Meta: {{ k(d.revenue.goal) }} ({{ d.revenue.pct }}%)</div>
       </div>
       <div class="card">
         <div class="stat-label">Veículos disponíveis</div>
@@ -65,7 +66,13 @@ import { Api, BrlPipe, MONTHS, thisMonth, thousands } from '../core';
     <div class="grid g2-1 mt">
       <div class="card">
         <div class="card-head">
-          <div><h2>Oportunidades recuperadas</h2><p class="muted small" style="margin:2px 0 0">Clientes cujo veículo procurado chegou ao estoque.</p></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <ap-icon name="sparkles" [size]="18" style="color:var(--primary)" />
+              <h2>Oportunidades recuperadas</h2>
+            </div>
+            <p class="muted small" style="margin:2px 0 0">Clientes cujo veículo procurado chegou ao estoque.</p>
+          </div>
           <a routerLink="/crm">Ver CRM →</a>
         </div>
         <div class="list">

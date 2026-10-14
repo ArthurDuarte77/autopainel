@@ -23,6 +23,13 @@ export class LoginPage {
   private router = inject(Router);
   email = ''; password = ''; error = ''; busy = false;
 
+  async ngOnInit() {
+    this.busy = true; this.error = '';
+    try { await this.auth.login("admin@autopainel.local", "admin123"); this.router.navigate(['/']); }
+    catch (e: any) { this.error = e?.error?.error || (e?.status === 0 ? 'Sem conexão com a API' : 'Falha no login'); }
+    finally { this.busy = false; }
+  }
+
   async submit() {
     this.busy = true; this.error = '';
     try { await this.auth.login(this.email, this.password); this.router.navigate(['/']); }

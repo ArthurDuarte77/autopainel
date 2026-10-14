@@ -8,7 +8,7 @@ import { markSold, notifyMatches, syncVehicle, label } from '../core.js';
 
 const r = Router();
 const FIELDS = ['brand', 'model', 'version', 'body_type', 'year', 'km', 'plate', 'color', 'fuel', 'transmission', 'doors',
-  'price', 'cost', 'prep_cost', 'status', 'description', 'seller_id'];
+  'price', 'cost', 'prep_cost', 'status', 'description', 'seller_id', 'photos'];
 export const pick = (src, keys) => Object.fromEntries(keys.filter(k => src?.[k] !== undefined).map(k => [k, src[k] === '' ? null : src[k]]));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const parse = (v) => v && ({ ...v, photos: typeof v.photos === 'string' ? JSON.parse(v.photos) : v.photos || [] });
@@ -53,6 +53,10 @@ function validate(d, partial) {
   for (const k of ['brand', 'model', 'year', 'price']) if (!partial && !d[k]) throw bad(`Campo obrigatório: ${k}`);
   if (d.plate) d.plate = String(d.plate).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (d.year && (d.year < 1950 || d.year > new Date().getFullYear() + 1)) throw bad('Ano inválido');
+  if (d.photos !== undefined) {
+    if (Array.isArray(d.photos)) d.photos = JSON.stringify(d.photos);
+    else if (typeof d.photos !== 'string') d.photos = '[]';
+  }
   return d;
 }
 
@@ -66,7 +70,7 @@ r.post('/', async (req, res) => {
   const d = validate(pick(req.body, FIELDS));
   if (d.status === 'Vendido') d.status = 'Disponível'; // a sale goes through /sell so finance records are created
   try {
-    const { insertId } = await q('INSERT INTO vehicles SET ?', [{ ...d, photos: '[]' }]);
+    const { insertId } = await q('INSERT INTO vehicles SET ?', [{ photos: '[]', ...d }]);
     await afterSave(insertId, res, 201);
   } catch (e) { if (e.code === 'ER_DUP_ENTRY') throw bad('Placa já cadastrada', 409); throw e; }
 });

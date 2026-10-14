@@ -169,15 +169,15 @@ INSERT INTO sellers (id, name, email, phone, commission_pct, monthly_goal) VALUE
  (2, 'Ana',    'ana@autopainel.local',    '(11) 90000-0002', 2.00, 8),
  (3, 'Bruno',  'bruno@autopainel.local',  '(11) 90000-0003', 2.00, 8);
 
-INSERT INTO vehicles (id, brand, model, version, body_type, year, km, plate, color, fuel, transmission, price, cost, status, sold_price, sold_at, seller_id) VALUES
- (1, 'Toyota',    'Corolla', 'XEi 2.0',      'Sedã',   2022, 38200, 'RTF-4E21', 'Prata',  'Flex',   'CVT',        128900, 109000, 'Disponível',    NULL,   NULL,         NULL),
- (2, 'Honda',     'HR-V',    'EXL',          'SUV',    2021, 51000, 'QWE-8A33', 'Branco', 'Flex',   'CVT',        119500, 101500, 'Reservado',     NULL,   NULL,         2),
- (3, 'Jeep',      'Compass', 'Longitude',    'SUV',    2023, 22400, 'SDF-1B90', 'Preto',  'Flex',   'Automático', 164000, 141000, 'Disponível',    NULL,   NULL,         NULL),
- (4, 'VW',        'T-Cross', 'Highline',     'SUV',    2022, 41800, 'PLK-7C12', 'Cinza',  'Flex',   'Automático', 132000, 111000, 'Em preparação', NULL,   NULL,         NULL),
- (5, 'Chevrolet', 'Onix',    'LTZ',          'Hatch',  2020, 63500, 'MNB-3D45', 'Branco', 'Flex',   'Automático',  72900,  61000, 'Vendido',        72900, '2026-10-09', 1),
- (6, 'Hyundai',   'Creta',   'Platinum',     'SUV',    2023, 18900, 'ZXC-9F67', 'Azul',   'Flex',   'Automático', 149900, 129500, 'Disponível',    NULL,   NULL,         NULL),
- (7, 'Fiat',      'Toro',    'Volcano',      'Picape', 2021, 70100, 'GHJ-2K88', 'Vermelho','Diesel','Automático', 139000, 120000, 'Vendido',       139000, '2026-10-12', 1),
- (8, 'Renault',   'Kwid',    'Zen',          'Hatch',  2022, 29800, 'TYU-5L03', 'Branco', 'Flex',   'Manual',      54900,  46000, 'Disponível',    NULL,   NULL,         NULL);
+INSERT INTO vehicles (id, brand, model, version, body_type, year, km, plate, color, fuel, transmission, price, cost, status, sold_price, sold_at, seller_id, photos) VALUES
+ (1, 'Toyota',    'Corolla', 'XEi 2.0',      'Sedã',   2022, 38200, 'RTF-4E21', 'Prata',  'Flex',   'CVT',        128900, 109000, 'Disponível',    NULL,   NULL,         NULL, '["/uploads/corolla.jpg"]'),
+ (2, 'Honda',     'HR-V',    'EXL',          'SUV',    2021, 51000, 'QWE-8A33', 'Branco', 'Flex',   'CVT',        119500, 101500, 'Reservado',     NULL,   NULL,         2,    '["/uploads/hr-v.jpg"]'),
+ (3, 'Jeep',      'Compass', 'Longitude',    'SUV',    2023, 22400, 'SDF-1B90', 'Preto',  'Flex',   'Automático', 164000, 141000, 'Disponível',    NULL,   NULL,         NULL, '["/uploads/compass.jpg"]'),
+ (4, 'VW',        'T-Cross', 'Highline',     'SUV',    2022, 41800, 'PLK-7C12', 'Cinza',  'Flex',   'Automático', 132000, 111000, 'Em preparação', NULL,   NULL,         NULL, '["/uploads/t-cross.jpg"]'),
+ (5, 'Chevrolet', 'Onix',    'LTZ',          'Hatch',  2020, 63500, 'MNB-3D45', 'Branco', 'Flex',   'Automático',  72900,  61000, 'Vendido',        72900, '2026-10-09', 1,    '["/uploads/onix.jpg"]'),
+ (6, 'Hyundai',   'Creta',   'Platinum',     'SUV',    2023, 18900, 'ZXC-9F67', 'Azul',   'Flex',   'Automático', 149900, 129500, 'Disponível',    NULL,   NULL,         NULL, '["/uploads/creta.jpg"]'),
+ (7, 'Fiat',      'Toro',    'Volcano',      'Picape', 2021, 70100, 'GHJ-2K88', 'Vermelho','Diesel','Automático', 139000, 120000, 'Vendido',       139000, '2026-10-12', 1,    '["/uploads/toro.jpg"]'),
+ (8, 'Renault',   'Kwid',    'Zen',          'Hatch',  2022, 29800, 'TYU-5L03', 'Branco', 'Flex',   'Manual',      54900,  46000, 'Disponível',    NULL,   NULL,         NULL, '["/uploads/kwid.jpg"]');
 -- T-Cross: R$ 3.200 de funilaria em prep_cost
 UPDATE vehicles SET prep_cost = 3200 WHERE id = 4;
 

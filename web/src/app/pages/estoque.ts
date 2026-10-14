@@ -1,14 +1,16 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, BrlPipe, VEHICLE_ENUMS, today, vlabel } from '../core';
+import { Icon } from '../app';
 
 const EMPTY = () => ({
   brand: '', model: '', version: '', body_type: 'Hatch', year: new Date().getFullYear(), km: 0, plate: '', color: '',
   fuel: 'Flex', transmission: 'Manual', doors: 4, price: null, cost: null, prep_cost: 0, status: 'Disponível', description: '', seller_id: null,
+  photos: [],
 } as any);
 
 @Component({
-  selector: 'ap-estoque', standalone: true, imports: [FormsModule, BrlPipe],
+  selector: 'ap-estoque', standalone: true, imports: [FormsModule, BrlPipe, Icon],
   template: `
   <div class="page-head">
     <div><h1>Estoque</h1><p class="muted">{{ rows().length }} veículos encontrados.</p></div>
@@ -31,7 +33,23 @@ const EMPTY = () => ({
         <tbody>
           @for (v of rows(); track v.id) {
             <tr>
-              <td>@if (v.photos?.length) { <img class="thumb" [src]="v.photos[0]" alt="" /> } @else { <div class="thumb empty">sem foto</div> }</td>
+              <td>
+                <div style="position:relative;width:92px;height:60px">
+                  @if (v.photos?.length) {
+                    <img class="thumb" [src]="v.photos[0]" alt="" />
+                    @if (v.photos.length > 1) {
+                      <span style="position:absolute;bottom:3px;right:3px;padding:1px 5px;font-size:10px;font-weight:600;background:rgba(0,0,0,0.7);color:#fff;border-radius:4px">
+                        📷 {{ v.photos.length }}
+                      </span>
+                    }
+                  } @else {
+                    <div class="thumb empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                      <ap-icon name="car" [size]="20" style="opacity:0.4" />
+                      <span style="font-size:10px;opacity:0.6">sem foto</span>
+                    </div>
+                  }
+                </div>
+              </td>
               <td><strong>{{ v.brand }} {{ v.model }}</strong><div class="muted small">{{ v.version }} · {{ v.year }} · {{ v.color }}</div></td>
               <td class="mono">{{ v.plate || '—' }}</td>
               <td class="nowrap">{{ (v.km || 0).toLocaleString("pt-BR") }} km</td>
@@ -62,7 +80,13 @@ const EMPTY = () => ({
             @for (p of previews; track p) {
               <div class="photo"><img [src]="p" alt="" /><button type="button" (click)="unqueue($index)" aria-label="Remover foto">✕</button></div>
             }
-            <label class="photo-add">+ Fotos<input type="file" accept="image/*" multiple (change)="upload($event)" /></label>
+            <label class="photo-add">+ Arquivos<input type="file" accept="image/*" multiple (change)="upload($event)" /></label>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+            <input [(ngModel)]="newPhotoUrl" [ngModelOptions]="{standalone: true}" placeholder="Ou cole a URL de uma foto (https://...)" style="flex:1;min-width:200px" (keydown.enter)="$event.preventDefault(); addPhotoByUrl()" />
+            <button type="button" class="btn sm" (click)="addPhotoByUrl()" [disabled]="!newPhotoUrl?.trim()">+ Foto por URL</button>
+            <button type="button" class="btn sm" (click)="suggestPhoto()" title="Preenche foto sugerida baseada no modelo/marca">⚡ Sugerir foto</button>
           </div>
 
           <div class="form-grid mt">
@@ -141,6 +165,7 @@ export class EstoquePage {
   busy = false;
   pending: File[] = [];
   previews: string[] = [];
+  newPhotoUrl = '';
   private t: any;
 
   constructor() {
@@ -153,8 +178,46 @@ export class EstoquePage {
   color(s: string) { return ({ 'Disponível': 'green', 'Reservado': 'yellow', 'Em preparação': 'blue', 'Vendido': 'red' } as any)[s] || ''; }
   pubColor(s: string) { return ({ publicado: 'green', pendente: 'yellow', erro: 'red' } as any)[s] || ''; }
 
-  openNew() { this.form = EMPTY(); this.pending = []; this.previews = []; }
-  async edit(v: any) { const full = await this.api.act(() => this.api.get(`/vehicles/${v.id}`)); if (full) this.form = full; }
+  openNew() { this.form = EMPTY(); this.pending = []; this.previews = []; this.newPhotoUrl = ''; }
+  async edit(v: any) { const full = await this.api.act(() => this.api.get(`/vehicles/${v.id}`)); if (full) { this.form = full; this.newPhotoUrl = ''; } }
+
+  addPhotoByUrl() {
+    if (!this.newPhotoUrl?.trim()) return;
+    const url = this.newPhotoUrl.trim();
+    if (!this.form.photos) this.form.photos = [];
+    this.form.photos.push(url);
+    this.newPhotoUrl = '';
+  }
+
+  suggestPhoto() {
+    const brand = (this.form.brand || '').toLowerCase();
+    const model = (this.form.model || '').toLowerCase();
+    const type = (this.form.body_type || '').toLowerCase();
+
+    let url = '/uploads/kwid.jpg';
+    if (brand.includes('corolla') || model.includes('corolla') || brand.includes('toyota')) {
+      url = '/uploads/corolla.jpg';
+    } else if (brand.includes('honda') || model.includes('hr-v') || model.includes('civic')) {
+      url = '/uploads/hr-v.jpg';
+    } else if (brand.includes('jeep') || model.includes('compass') || model.includes('renegade')) {
+      url = '/uploads/compass.jpg';
+    } else if (brand.includes('volkswagen') || brand.includes('vw') || model.includes('cross') || model.includes('polo') || model.includes('t-cross')) {
+      url = '/uploads/t-cross.jpg';
+    } else if (brand.includes('chevrolet') || model.includes('onix') || model.includes('tracker')) {
+      url = '/uploads/onix.jpg';
+    } else if (brand.includes('hyundai') || model.includes('creta') || model.includes('hb20')) {
+      url = '/uploads/creta.jpg';
+    } else if (brand.includes('fiat') || model.includes('toro') || type.includes('picape')) {
+      url = '/uploads/toro.jpg';
+    } else if (type.includes('suv')) {
+      url = '/uploads/compass.jpg';
+    } else if (type.includes('sedã') || type.includes('seda')) {
+      url = '/uploads/corolla.jpg';
+    }
+
+    if (!this.form.photos) this.form.photos = [];
+    this.form.photos.push(url);
+  }
 
   async save() {
     this.busy = true;
@@ -191,6 +254,10 @@ export class EstoquePage {
   }
   unqueue(i: number) { URL.revokeObjectURL(this.previews[i]); this.pending.splice(i, 1); this.previews.splice(i, 1); }
   async removePhoto(url: string) {
+    if (!this.form.id || !url.startsWith('/uploads/')) {
+      this.form.photos = (this.form.photos || []).filter((p: string) => p !== url);
+      return;
+    }
     const r = await this.api.act(() => this.api.del(`/vehicles/${this.form.id}/photos`, { url }));
     if (r) { this.form.photos = r.photos; this.load(); }
   }
