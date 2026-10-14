@@ -1,0 +1,6 @@
+Microsoft Windows [versÆo 10.0.26200.9711]
+(c) Microsoft Corporation. Todos os direitos reservados.
+
+D:\autopainel>{"session_id":"0eee59f2-2cc8-4efd-af6c-c8682e4ed227","transcript_path":"C:\\Users\\User\\.claude\\projects\\D--autopainel\\0eee59f2-2cc8-4efd-af6c-c8682e4ed227.jsonl","cwd":"D:\\autopainel","prompt_id":"ba5c031e-218a-42ee-82e3-9056a4d5be98","permission_mode":"bypassPermissions","hook_event_name":"UserPromptSubmit","prompt":"continue, e depois use o ssh para colocar o site para funcionar nesse servidor: 84.247.173.203, usuario: venus, senha: Art$2007, essa Ã© a mesma senha do root, e coloca para rotear com o nginx para esse dominio: autopainel.adbserver.com.br"}
+
+D:\autopainel>
