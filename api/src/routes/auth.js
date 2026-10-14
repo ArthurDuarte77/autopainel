@@ -28,6 +28,15 @@ r.post('/register', async (req, res) => {
   res.status(201).json({ token: signToken(user), user });
 });
 
+// ponytail: temporary demo convenience — AUTO_LOGIN=true hands the first admin's token to anyone. Turn off before real use.
+r.post('/auto', async (req, res) => {
+  if (env('AUTO_LOGIN', 'false') !== 'true') return res.status(403).json({ error: 'Login automático desativado' });
+  const u = await one("SELECT id, name, email, role FROM users WHERE role='admin' ORDER BY id LIMIT 1");
+  if (!u) return res.status(404).json({ error: 'Sem administrador' });
+  const user = { id: u.id, name: u.name, email: u.email, role: u.role };
+  res.json({ token: signToken(user), user });
+});
+
 r.get('/me', requireAuth, (req, res) => res.json({ ...req.user, store: env('STORE_NAME', 'AutoPainel') }));
 
 r.post('/password', requireAuth, async (req, res) => {

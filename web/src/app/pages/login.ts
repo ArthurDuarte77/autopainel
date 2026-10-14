@@ -35,6 +35,8 @@ export class LoginPage {
 
   constructor() {
     firstValueFrom(inject(HttpClient).get<{ enabled: boolean }>('/api/auth/signup')).then(r => this.signupEnabled = r.enabled).catch(() => { });
+    // AUTO_LOGIN on the server: skip the form; otherwise (403) just show it.
+    this.auth.auto().then(() => this.router.navigate(['/'])).catch(() => { });
   }
 
   async submit() {

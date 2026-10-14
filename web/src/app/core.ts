@@ -24,6 +24,10 @@ export class Auth {
     this.start(await firstValueFrom(this.http.post('/api/auth/register', { name, email, password })));
     await this.refresh();
   }
+  async auto() {
+    this.start(await firstValueFrom(this.http.post('/api/auth/auto', {})));
+    await this.refresh();
+  }
   private start(r: any) {
     localStorage.setItem(TOKEN, r.token);
     this.setUser(r.user);
