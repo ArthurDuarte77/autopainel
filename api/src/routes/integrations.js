@@ -140,6 +140,14 @@ publicIntegrations.post('/webhooks/olx', async (req, res) => {
   res.json(await importLeads('olx', items));
 });
 
+// Nuvemshop mandatory LGPD webhooks (store-redact, customers-redact, customers-data-request).
+// We only push vehicles as products and keep no Nuvemshop customer data, so there is nothing to erase/export: ack + log.
+// ponytail: no x-linkedstore-hmac-sha256 check since nothing is acted on; add it if these ever touch data.
+publicIntegrations.post('/webhooks/nuvemshop/:topic', async (req, res) => {
+  res.sendStatus(200);
+  await log('nuvemshop', `lgpd ${req.params.topic} store ${req.body?.store_id ?? '?'}`, true);
+});
+
 // WhatsApp Cloud API: verification + incoming messages become leads.
 publicIntegrations.get('/webhooks/whatsapp', (req, res) => {
   if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === env('WHATSAPP_VERIFY_TOKEN', 'autopainel')) return res.send(req.query['hub.challenge']);
