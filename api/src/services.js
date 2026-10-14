@@ -3,9 +3,9 @@ import nodemailer from 'nodemailer';
 import { http, env, has } from './http.js';
 import { getToken } from './db.js';
 
-// ---------------------------------------------------------------- FIPE (parallelum v2)
+// ---------------------------------------------------------------- FIPE (fipe.api.br v2, parallelum-compatible)
 const fipeH = () => (has('FIPE_TOKEN') ? { 'X-Subscription-Token': env('FIPE_TOKEN') } : {});
-const fipeGet = (path) => http(`${env('FIPE_API_URL', 'https://fipe.parallelum.com.br/api/v2')}${path}`, { headers: fipeH() });
+const fipeGet = (path) => http(`${env('FIPE_API_URL', 'https://fipe.api.br/api/v2')}${path}`, { headers: fipeH() });
 export const parseBRL = (s) => Number(String(s ?? '').replace(/[^\d,]/g, '').replace(',', '.')) || 0;
 
 export const fipe = {
