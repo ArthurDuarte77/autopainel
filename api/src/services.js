@@ -1,7 +1,7 @@
 // FIPE, plate lookup, market references, appraisal math, lead matching, e-mail and WhatsApp.
 import nodemailer from 'nodemailer';
 import { http, env, has } from './http.js';
-import { getToken } from './db.js';
+import { getToken, q, one } from './db.js';
 
 // ---------------------------------------------------------------- FIPE (fipe.api.br v2, parallelum-compatible)
 const fipeH = () => (has('FIPE_TOKEN') ? { 'X-Subscription-Token': env('FIPE_TOKEN') } : {});
@@ -42,11 +42,14 @@ export async function lookupPlate(plate) {
   const p = String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(p)) throw Object.assign(new Error('Placa inválida'), { status: 400 });
   if (!has('PLATE_API_TOKEN')) throw Object.assign(new Error('Consulta de placa não configurada (PLATE_API_TOKEN). Preencha marca/modelo/ano manualmente.'), { status: 501 });
-  const r = await http(`${env('PLATE_API_URL').replace(/\/$/, '')}/${p}/${env('PLATE_API_TOKEN')}`);
+  // Every API call costs a credit: keep the raw response forever (settings k=plate:XXX), only cache real hits.
+  const cached = await one('SELECT v FROM settings WHERE k=?', [`plate:${p}`]);
+  const r = cached ? JSON.parse(cached.v) : await http(`${env('PLATE_API_URL').replace(/\/$/, '')}/${p}/${env('PLATE_API_TOKEN')}`);
+  if (!cached && (r.MARCA || r.marca)) await q('INSERT IGNORE INTO settings (k, v) VALUES (?, ?)', [`plate:${p}`, JSON.stringify(r)]);
   const best = (r.fipe?.dados || []).sort((a, b) => (b.score || 0) - (a.score || 0))[0];
   return {
     plate: p, brand: r.MARCA || r.marca, model: r.MODELO || r.modelo, version: r.VERSAO || r.versao || '',
-    year: Number(r.anoModelo || r.ano) || null, color: r.cor || r.COR || '', fuel: r.combustivel || '',
+    year: Number(r.anoModelo || r.ano) || null, color: r.cor || r.COR || '', fuel: r.combustivel || best?.combustivel || '',
     fipe_code: best?.codigo_fipe || null, fipe_price: best ? parseBRL(best.texto_valor) : null,
   };
 }
