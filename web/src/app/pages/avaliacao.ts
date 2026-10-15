@@ -56,7 +56,7 @@ const PARAMS = () => ({ margem: 12, preparacao: 2500, impostos: 3, comissao: 1.5
           }
           <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
             <span style="font-weight:600">Valor de mercado</span>
-            <strong style="color:var(--primary);font-size:16px">{{ market_value ? (market_value | brl) : '—' }}</strong>
+            <strong style="color:var(--primary);font-size:16px">{{ avg() ? (avg() | brl) : '—' }}</strong>
           </div>
         </div>
       } @else {
@@ -67,6 +67,7 @@ const PARAMS = () => ({ margem: 12, preparacao: 2500, impostos: 3, comissao: 1.5
     <!-- Coluna 2: Custos e margem -->
     <section class="panel" style="padding:24px;display:flex;flex-direction:column;gap:14px">
       <h2 style="font-size:18px;font-weight:600">Custos e margem</h2>
+      <label><span class="muted">Preço de venda (R$)</span><input type="number" step="500" min="0" class="field" style="margin-top:4px" placeholder="Quanto pretende vender" [(ngModel)]="market_value" (ngModelChange)="recalc()" /></label>
       <label><span class="muted">Margem desejada (%)</span><input type="number" step="0.5" class="field" style="margin-top:4px" [(ngModel)]="params.margem" (ngModelChange)="recalc()" /></label>
       <label><span class="muted">Preparação (R$)</span><input type="number" step="100" class="field" style="margin-top:4px" [(ngModel)]="params.preparacao" (ngModelChange)="recalc()" /></label>
       <label><span class="muted">Impostos (%)</span><input type="number" step="0.5" class="field" style="margin-top:4px" [(ngModel)]="params.impostos" (ngModelChange)="recalc()" /></label>
@@ -84,7 +85,7 @@ const PARAMS = () => ({ margem: 12, preparacao: 2500, impostos: 3, comissao: 1.5
         <button class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);width:100%;justify-content:center;font-weight:600" (click)="saveAppraisal()" [disabled]="busy">✓ Salvar avaliação</button>
       } @else {
         <p style="font-family:Sora,sans-serif;font-size:42px;font-weight:700;margin:12px 0 8px">—</p>
-        <p class="small" style="opacity:0.85;margin:0">Sem FIPE ou anúncios de referência não há como calcular.</p>
+        <p class="small" style="opacity:0.85;margin:0">Informe o preço de venda para calcular.</p>
       }
     </section>
   </div>
@@ -158,8 +159,8 @@ export class AvaliacaoPage {
     }
   }
 
-  // Market value = average of real listings, else FIPE, else nothing.
-  private avg() {
+  // Market reference = average of real listings, else FIPE, else nothing. Prefills the editable sale price.
+  avg() {
     const prices = this.refs.map(r => Number(r.price)).filter(n => n > 0);
     return prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : Number(this.v.fipe_price) || 0;
   }
