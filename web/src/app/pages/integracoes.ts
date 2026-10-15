@@ -10,7 +10,7 @@ const when = (d: string) => (d ? `${d.slice(0, 10).split('-').reverse().join('/'
   selector: 'ap-integracoes', standalone: true, imports: [FormsModule, BrlPipe],
   template: `
   <div class="page-head">
-    <div><h1>Integrações</h1><p class="muted">Credenciais ficam no arquivo <code>.env</code>. Após editar, reinicie a API (<code>docker compose restart api</code>).</p></div>
+    <div><h1>Integrações</h1><p class="muted">Conecte suas contas para publicar anúncios e receber leads.</p></div>
     <div class="actions"><button class="btn" (click)="load()">Atualizar</button></div>
   </div>
 
@@ -21,92 +21,19 @@ const when = (d: string) => (d ? `${d.slice(0, 10).split('-').reverse().join('/'
   @if (data(); as d) {
     @if (tab === 'Canais') {
       <div class="grid g3 mt">
-        @for (c of d.channels; track c.id) {
+        @for (c of channels(d); track c.id) {
           <div class="card">
             <div class="card-head" style="margin-bottom:6px"><h3>{{ c.name }}</h3><span class="badge" [class]="'badge ' + state(c)[1]">{{ state(c)[0] }}</span></div>
             <div class="small muted">{{ c.kind === 'marketplace' ? 'Marketplace' : 'E-commerce / site' }}@if (c.connected_at) { · conectado em {{ when(c.connected_at) }} }</div>
-            <div class="small mt"><span class="muted">.env:</span> @for (k of c.env; track k) { <code class="small">{{ k }}</code> }</div>
-            @if (c.last_log; as l) { <div class="small mt" [class.down]="!l.ok" style="margin-top:6px">{{ l.action }} · {{ when(l.created_at) }}@if (l.message) { — {{ l.message }} }</div> }
             <div class="actions mt" style="margin-top:10px">
-              @if (c.oauth) {
+              @if (c.oauth && c.configured) {
                 @if (c.connected) { <button class="btn sm danger" (click)="disconnect(c)" [disabled]="busy">Desconectar</button> }
-                @else { <button class="btn sm primary" (click)="connect(c)" [disabled]="busy || !c.configured">Conectar</button> }
+                @else { <button class="btn sm primary" (click)="connect(c)" [disabled]="busy">Conectar</button> }
               }
               @if (c.id === 'mercadolivre' && c.connected) { <button class="btn sm" (click)="mlQuestions()" [disabled]="busy">Importar perguntas</button> }
             </div>
           </div>
         }
-      </div>
-    }
-
-    @if (tab === 'CRMs') {
-      <div class="grid g3 mt">
-        @for (c of d.crms; track c.id) {
-          <div class="card">
-            <div class="card-head" style="margin-bottom:6px"><h3>{{ c.name }}</h3><span class="badge" [class]="'badge ' + (c.configured ? 'green' : '')">{{ c.configured ? 'Configurado' : 'Não configurado' }}</span></div>
-            <div class="small muted">{{ c.pull ? 'Envia e importa leads' : 'Somente envio de leads' }}</div>
-            <div class="small mt"><span class="muted">.env:</span> @for (k of c.env; track k) { <code class="small">{{ k }}</code> }</div>
-            @if (c.last_log; as l) { <div class="small mt" [class.down]="!l.ok" style="margin-top:6px">{{ l.action }} · {{ when(l.created_at) }}@if (l.message) { — {{ l.message }} }</div> }
-            <div class="actions mt" style="margin-top:10px">
-              @if (c.pull) { <button class="btn sm" (click)="pull(c)" [disabled]="busy || !c.configured">Importar leads</button> }
-              <button class="btn sm" (click)="pushAll(c)" [disabled]="busy || !c.configured">Enviar todos os leads</button>
-            </div>
-          </div>
-        }
-      </div>
-      <p class="muted small mt">Leads novos e alterados são enviados automaticamente a todos os CRMs configurados.</p>
-    }
-
-    @if (tab === 'Serviços') {
-      <div class="grid g2 mt">
-        @for (s of d.services; track s.id) {
-          <div class="card">
-            <div class="card-head" style="margin-bottom:6px"><h3>{{ s.name }}</h3><span class="badge" [class]="'badge ' + (s.configured ? 'green' : '')">{{ s.configured ? 'Ativo' : 'Não configurado' }}</span></div>
-            @if (s.note) { <div class="small muted">{{ s.note }}</div> }
-            <div class="small mt"><span class="muted">.env:</span> @for (k of s.env; track k) { <code class="small">{{ k }}</code> }</div>
-            @if (s.last_log; as l) { <div class="small mt" [class.down]="!l.ok" style="margin-top:6px">{{ l.action }} · {{ when(l.created_at) }}@if (l.message) { — {{ l.message }} }</div> }
-          </div>
-        }
-      </div>
-    }
-
-    @if (tab === 'Webhooks') {
-      <div class="card mt">
-        <p class="muted small" style="margin-top:0">Cadastre estas URLs nos painéis de cada serviço. Em produção, defina <code>PUBLIC_URL</code> no .env com seu domínio HTTPS.</p>
-        @for (w of hooks(d.webhooks); track w[0]) {
-          <div class="kv"><span>{{ w[1] }}</span>
-            <span style="display:flex;gap:8px;align-items:center;min-width:0"><code class="small" style="overflow:hidden;text-overflow:ellipsis">{{ d.webhooks[w[0]] }}</code>
-              <button class="btn sm" (click)="copy(d.webhooks[w[0]])">Copiar</button></span></div>
-        }
-        <h3 class="mt">Formulário do site próprio</h3>
-        <p class="small muted">POST JSON em <code>{{ d.webhooks.site_leads }}</code> com <code>{{ '{' }}"name","phone","email","message","vehicle_id"{{ '}' }}</code>. Opcional: header <code>X-AutoPainel-Signature</code> = HMAC-SHA256 do corpo com <code>SITE_WEBHOOK_SECRET</code>.</p>
-      </div>
-    }
-
-    @if (tab === 'Logs') {
-      <div class="filters mt">
-        <select [(ngModel)]="logProvider" (change)="loadLogs()" aria-label="Integração">
-          <option value="">Todas integrações</option>
-          @for (p of providers(d); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
-        </select>
-      </div>
-      <div class="card" style="padding:0">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Data</th><th>Integração</th><th>Ação</th><th>Status</th><th>Mensagem</th></tr></thead>
-            <tbody>
-              @for (l of logs(); track l.id) {
-                <tr>
-                  <td class="nowrap">{{ when(l.created_at) }}</td>
-                  <td>{{ l.provider }}</td>
-                  <td>{{ l.action }}</td>
-                  <td><span class="badge" [class]="'badge ' + (l.ok ? 'green' : 'red')">{{ l.ok ? 'OK' : 'Erro' }}</span></td>
-                  <td class="small" style="white-space:normal;max-width:480px">{{ l.message }}</td>
-                </tr>
-              } @empty { <tr><td colspan="5" class="empty">Nenhum registro.</td></tr> }
-            </tbody>
-          </table>
-        </div>
       </div>
     }
 
@@ -182,13 +109,12 @@ export class IntegracoesPage {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   SELLER = SELLER; when = when;
-  tabs = ['Canais', 'CRMs', 'Serviços', 'Webhooks', 'Logs', 'Configurações'];
+  tabs = ['Canais', 'Configurações'];
   tab = 'Canais';
   admin = inject(Auth).user()?.role === 'admin';
   data = signal<any>(null);
-  logs = signal<any[]>([]);
   sellers = signal<any[]>([]);
-  logProvider = ''; goal: any = null; seller: any = null; busy = false;
+  goal: any = null; seller: any = null; busy = false;
   pw: any = { current: '', password: '', confirm: '' };
 
   constructor() {
@@ -204,22 +130,18 @@ export class IntegracoesPage {
   async load() { const d = await this.api.act(() => this.api.get('/integrations')); if (d) this.data.set(d); }
   setTab(t: string) {
     this.tab = t;
-    if (t === 'Logs') this.loadLogs();
     if (t === 'Configurações') {
       this.loadSellers();
       this.api.get('/settings').then(s => this.goal = s.monthly_revenue_goal ?? null).catch(() => {});
     }
   }
   state(c: any): [string, string] {
-    if (!c.configured) return ['Não configurado', ''];
+    if (!c.configured) return ['Em breve', ''];
     if (c.oauth && !c.connected) return ['Desconectado', 'yellow'];
     return ['Conectado', 'green'];
   }
-  hooks(w: any) {
-    const names: Record<string, string> = { mercadolivre: 'Mercado Livre (notificações)', olx: 'OLX (leads)', whatsapp: 'WhatsApp Cloud API', site_leads: 'Leads do site próprio', feed: 'Feed XML do estoque' };
-    return Object.keys(w).map(k => [k, names[k] || k]);
-  }
-  providers(d: any) { return [...d.channels, ...d.crms, ...d.services]; }
+  // Only platforms the store actually uses; the rest stay in the API for later.
+  channels(d: any) { return d.channels.filter((c: any) => ['mercadolivre', 'nuvemshop'].includes(c.id)); }
 
   private async run<T>(fn: () => Promise<T>, ok?: any) { this.busy = true; try { return await this.api.act(fn, ok); } finally { this.busy = false; } }
 
@@ -229,18 +151,6 @@ export class IntegracoesPage {
     if (await this.run(() => this.api.del(`/integrations/${c.id}/token`), `${c.name} desconectado`)) this.load();
   }
   async mlQuestions() { await this.run(() => this.api.post('/integrations/mercadolivre/questions'), (r: any) => `${r.created} novos leads de ${r.total} perguntas`); this.load(); }
-  async pull(c: any) { await this.run(() => this.api.post(`/integrations/crm/${c.id}/pull`), (r: any) => `${c.name}: ${r.created} novos leads de ${r.total}`); this.load(); }
-  async pushAll(c: any) {
-    if (!confirm(`Enviar todos os leads abertos para ${c.name}?`)) return;
-    await this.run(() => this.api.post(`/integrations/crm/${c.id}/push-all`),
-      (r: any) => `${c.name}: ${r.ok}/${r.total} enviados${r.errors.length ? ' · ' + r.errors[0] : ''}`);
-    this.load();
-  }
-  async loadLogs() {
-    const r = await this.api.act(() => this.api.get('/integrations/logs', { provider: this.logProvider, limit: 200 }));
-    if (r) this.logs.set(r);
-  }
-  copy(text: string) { navigator.clipboard?.writeText(text).then(() => this.toast.show('Copiado'), () => this.toast.show('Não foi possível copiar', true)); }
 
   editSeller(s: any) { this.seller = { ...s }; }
   async loadSellers() { const s = await this.api.act(() => this.api.get('/sellers')); if (s) this.sellers.set(s); }
