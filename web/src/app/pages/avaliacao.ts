@@ -23,15 +23,6 @@ import { Icon } from '../app';
         <ap-icon name="search" /> Consultar
       </button>
     </div>
-
-    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <span class="muted small">Atalhos rápidos:</span>
-      <button type="button" class="chip" (click)="setPlaca('ABC-1D23')">ABC-1D23 (Polo)</button>
-      <button type="button" class="chip" (click)="setPlaca('RTF-4E21')">RTF-4E21 (Corolla)</button>
-      <button type="button" class="chip" (click)="setPlaca('SDF-1B90')">SDF-1B90 (Compass)</button>
-      <button type="button" class="chip" (click)="setPlaca('PLK-7C12')">PLK-7C12 (T-Cross)</button>
-      <button type="button" class="chip" (click)="setPlaca('ZXC-9F67')">ZXC-9F67 (Creta)</button>
-    </div>
   </div>
 
   <div class="grid g3">
@@ -193,11 +184,6 @@ export class AvaliacaoPage {
   ngOnInit() {
     this.recalc();
     this.loadHistory();
-  }
-
-  setPlaca(p: string) {
-    this.plate = p;
-    this.consultar();
   }
 
   async consultar() {
