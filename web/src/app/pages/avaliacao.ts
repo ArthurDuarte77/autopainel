@@ -20,7 +20,10 @@ const PARAMS = () => ({ margem: 12, preparacao: 2500, impostos: 3, comissao: 1.5
     <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px">
       <label style="flex:1;min-width:220px">
         <span class="muted" style="font-weight:600">Placa do veículo</span>
-        <input class="field font-mono uppercase" style="margin-top:6px;font-size:16px;letter-spacing:1px" [(ngModel)]="plate" placeholder="ABC-1D23" (keydown.enter)="consultar()" />
+        <div style="margin-top:6px;max-width:300px;border:3px solid #1b2440;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="background:#1f4fbf;color:#fff;font-size:12px;font-weight:800;letter-spacing:.3em;text-align:center;padding:4px">BRASIL</div>
+          <input aria-label="Placa do veículo" style="display:block;width:100%;border:0;outline:0;background:transparent;text-align:center;font-size:40px;font-weight:800;letter-spacing:.06em;color:#1b2440;padding:4px 0 8px;text-transform:uppercase" maxlength="8" [(ngModel)]="plate" placeholder="ABC1D23" (keydown.enter)="consultar()" />
+        </div>
       </label>
       <button class="btn primary" (click)="consultar()" [disabled]="busy" style="padding:10px 20px;height:44px">
         <ap-icon name="search" /> Consultar

@@ -108,7 +108,11 @@ export class DashboardPage {
   d = signal<any>(null);
   month = thisMonth();
   min = Math.min; round = Math.round; k = thousands;
-  greeting = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite';
+  // Getter so a tab left open since morning updates; store clock, not the device's timezone.
+  get greeting() {
+    const h = +new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date());
+    return h >= 5 && h < 12 ? 'Bom dia' : h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite';
+  }
 
   constructor() { this.load(); }
   async load() { const d = await this.api.act(() => this.api.get('/dashboard', { month: this.month })); if (d) this.d.set(d); }
