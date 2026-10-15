@@ -35,7 +35,7 @@ r.get('/dashboard', async (req, res) => {
   const sellers = await q(`SELECT s.id, s.name, s.monthly_goal,
       (SELECT COUNT(*) FROM vehicles v WHERE v.seller_id=s.id AND v.status='Vendido' AND DATE_FORMAT(v.sold_at,'%Y-%m')=?) sold,
       (SELECT COALESCE(SUM(sold_price),0) FROM vehicles v WHERE v.seller_id=s.id AND v.status='Vendido' AND DATE_FORMAT(v.sold_at,'%Y-%m')=?) revenue
-    FROM sellers s WHERE s.active=1 ORDER BY sold DESC, s.name`, [m, m]);
+    FROM sellers s WHERE s.active=1 ORDER BY revenue DESC, s.name`, [m, m]);
 
   const opps = (await opportunities()).slice(0, 6).map(o => ({
     lead: { id: o.lead.id, name: o.lead.name, interest: o.lead.interest, stage: o.lead.stage, phone: o.lead.phone },
@@ -47,7 +47,7 @@ r.get('/dashboard', async (req, res) => {
     stock: { count: Number(stock.n), value: Number(stock.value), available: Number(available.n) },
     avg_profit: { value: avgNow, prev: avgPrev, sold: Number(pNow.n), delta_pct: avgPrev ? Math.round((avgNow - avgPrev) / avgPrev * 100) : null },
     chart: months.map(x => ({ month: x, value: rev[x] || 0 })),
-    sellers: sellers.map(s => ({ ...s, sold: Number(s.sold), revenue: Number(s.revenue), pct: s.monthly_goal ? Math.round(s.sold / s.monthly_goal * 100) : 0 })),
+    sellers: sellers.map(s => ({ ...s, sold: Number(s.sold), revenue: Number(s.revenue), pct: s.monthly_goal ? Math.round(s.revenue / s.monthly_goal * 100) : 0 })),
     opportunities: opps,
     today_events: await q(`SELECT * FROM events WHERE date=? ORDER BY time`, [today()]),
   });

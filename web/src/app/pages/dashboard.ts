@@ -56,7 +56,7 @@ import { Icon } from '../app';
         <div class="card-head"><h2>Metas por vendedor</h2></div>
         @for (s of d.sellers; track s.id) {
           <div style="margin-bottom:14px">
-            <div class="kv" style="border:0;padding:0 0 6px"><strong>{{ s.name }}</strong><span class="muted small">{{ s.sold }}/{{ s.monthly_goal }} vendas</span></div>
+            <div class="kv" style="border:0;padding:0 0 6px"><strong>{{ s.name }}</strong><span class="muted small">{{ s.revenue | brl }} / {{ s.monthly_goal | brl }} · {{ s.sold }} vendas</span></div>
             <div class="progress"><span [style.width.%]="min(s.pct, 100)"></span></div>
           </div>
         } @empty { <div class="empty">Nenhum vendedor cadastrado.</div> }

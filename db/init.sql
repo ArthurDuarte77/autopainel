@@ -21,7 +21,7 @@ CREATE TABLE sellers (
   email VARCHAR(160),
   phone VARCHAR(40),
   commission_pct DECIMAL(5,2) NOT NULL DEFAULT 2.00,
-  monthly_goal INT NOT NULL DEFAULT 8,
+  monthly_goal DECIMAL(12,2) NULL,
   active TINYINT(1) NOT NULL DEFAULT 1
 );
 
@@ -165,9 +165,9 @@ INSERT INTO settings (k, v) VALUES
  ('monthly_revenue_goal', '600000');
 
 INSERT INTO sellers (id, name, email, phone, commission_pct, monthly_goal) VALUES
- (1, 'Carlos', 'carlos@autopainel.local', '(11) 90000-0001', 2.00, 10),
- (2, 'Ana',    'ana@autopainel.local',    '(11) 90000-0002', 2.00, 8),
- (3, 'Bruno',  'bruno@autopainel.local',  '(11) 90000-0003', 2.00, 8);
+ (1, 'Carlos', 'carlos@autopainel.local', '(11) 90000-0001', 2.00, 200000),
+ (2, 'Ana',    'ana@autopainel.local',    '(11) 90000-0002', 2.00, 200000),
+ (3, 'Bruno',  'bruno@autopainel.local',  '(11) 90000-0003', 2.00, 200000);
 
 INSERT INTO vehicles (id, brand, model, version, body_type, year, km, plate, color, fuel, transmission, price, cost, status, sold_price, sold_at, seller_id, photos) VALUES
  (1, 'Toyota',    'Corolla', 'XEi 2.0',      'Sedã',   2022, 38200, 'RTF-4E21', 'Prata',  'Flex',   'CVT',        128900, 109000, 'Disponível',    NULL,   NULL,         NULL, '["/uploads/corolla.jpg"]'),
