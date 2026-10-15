@@ -37,6 +37,33 @@ const when = (d: string) => (d ? `${d.slice(0, 10).split('-').reverse().join('/'
       </div>
     }
 
+    @if (tab === 'CRMs') {
+      <div class="grid g3 mt">
+        @for (c of d.crms; track c.id) {
+          <form class="card" (ngSubmit)="saveCreds(c)">
+            <div class="card-head" style="margin-bottom:6px"><h3>{{ c.name }}</h3><span class="badge" [class]="'badge ' + (c.configured ? 'green' : '')">{{ c.configured ? 'Configurado' : 'Não configurado' }}</span></div>
+            <div class="small muted">{{ c.pull ? 'Envia e importa leads' : 'Somente envio de leads' }}</div>
+            @if (admin) {
+              <div style="display:grid;gap:8px;margin-top:10px">
+                @for (f of c.fields; track f.k) {
+                  <label class="small">{{ f.label }} <input type="password" [name]="f.k" [(ngModel)]="cred[f.k]" [placeholder]="f.set ? '••••• salvo' : ''" autocomplete="off" /></label>
+                }
+              </div>
+            }
+            <div class="actions mt" style="margin-top:10px">
+              @if (admin) {
+                <button class="btn sm primary" [disabled]="busy">Salvar</button>
+                @if (c.configured) { <button type="button" class="btn sm danger" (click)="clearCreds(c)" [disabled]="busy">Remover</button> }
+              }
+              @if (c.pull) { <button type="button" class="btn sm" (click)="pull(c)" [disabled]="busy || !c.configured">Importar leads</button> }
+              <button type="button" class="btn sm" (click)="pushAll(c)" [disabled]="busy || !c.configured">Enviar todos os leads</button>
+            </div>
+          </form>
+        }
+      </div>
+      <p class="muted small mt">Leads novos e alterados são enviados automaticamente a todos os CRMs configurados.</p>
+    }
+
     @if (tab === 'Configurações') {
       <div class="grid g2-1 mt">
         <div class="card" style="padding:0">
@@ -109,13 +136,14 @@ export class IntegracoesPage {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   SELLER = SELLER; when = when;
-  tabs = ['Canais', 'Configurações'];
+  tabs = ['Canais', 'CRMs', 'Configurações'];
   tab = 'Canais';
   admin = inject(Auth).user()?.role === 'admin';
   data = signal<any>(null);
   sellers = signal<any[]>([]);
   goal: any = null; seller: any = null; busy = false;
   pw: any = { current: '', password: '', confirm: '' };
+  cred: Record<string, string> = {};
 
   constructor() {
     const qp = this.route.snapshot.queryParamMap;
@@ -151,6 +179,25 @@ export class IntegracoesPage {
     if (await this.run(() => this.api.del(`/integrations/${c.id}/token`), `${c.name} desconectado`)) this.load();
   }
   async mlQuestions() { await this.run(() => this.api.post('/integrations/mercadolivre/questions'), (r: any) => `${r.created} novos leads de ${r.total} perguntas`); this.load(); }
+
+  // Only typed fields are sent; blank inputs keep the saved value.
+  async saveCreds(c: any) {
+    const body = Object.fromEntries(c.fields.filter((f: any) => this.cred[f.k]).map((f: any) => [f.k, this.cred[f.k]]));
+    if (!Object.keys(body).length) return this.toast.show('Preencha ao menos um campo', true);
+    if (await this.run(() => this.api.put(`/integrations/crm/${c.id}/credentials`, body), `${c.name} salvo`)) { c.fields.forEach((f: any) => delete this.cred[f.k]); this.load(); }
+  }
+  async clearCreds(c: any) {
+    if (!confirm(`Remover credenciais do ${c.name}?`)) return;
+    const body = Object.fromEntries(c.fields.map((f: any) => [f.k, '']));
+    if (await this.run(() => this.api.put(`/integrations/crm/${c.id}/credentials`, body), `${c.name} removido`)) this.load();
+  }
+  async pull(c: any) { await this.run(() => this.api.post(`/integrations/crm/${c.id}/pull`), (r: any) => `${c.name}: ${r.created} novos leads de ${r.total}`); this.load(); }
+  async pushAll(c: any) {
+    if (!confirm(`Enviar todos os leads abertos para ${c.name}?`)) return;
+    await this.run(() => this.api.post(`/integrations/crm/${c.id}/push-all`),
+      (r: any) => `${c.name}: ${r.ok}/${r.total} enviados${r.errors.length ? ' · ' + r.errors[0] : ''}`);
+    this.load();
+  }
 
   editSeller(s: any) { this.seller = { ...s }; }
   async loadSellers() { const s = await this.api.act(() => this.api.get('/sellers')); if (s) this.sellers.set(s); }

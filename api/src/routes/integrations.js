@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { q, log, getToken } from '../db.js';
 import { signToken, verifyToken } from '../auth.js';
-import { env, has, publicUrl } from '../http.js';
+import { env, has, publicUrl, creds } from '../http.js';
 import { channels } from '../integrations/channels.js';
 import { crms } from '../integrations/crms.js';
 import { importLeads } from '../core.js';
@@ -30,7 +30,9 @@ r.get('/', async (req, res) => {
   const row = (x, extra = {}) => ({ id: x.id, name: x.name, configured: x.configured(), env: ENV_KEYS[x.id] || [], last_log: lastLogs[x.id] || null, ...extra });
   res.json({
     channels: Object.values(channels).map(c => row(c, { kind: c.kind, oauth: !!c.oauth, connected: c.oauth ? !!tokens[c.id] : c.configured(), connected_at: tokens[c.id]?.updated_at || null })),
-    crms: Object.values(crms).map(c => row(c, { pull: !!c.pull, connected: c.configured() })),
+    // Only booleans for credentials, never values.
+    crms: Object.values(crms).map(c => row(c, { pull: !!c.pull, connected: c.configured(),
+      fields: ENV_KEYS[c.id].map(k => ({ k, label: k.replace(/^[A-Z0-9]+_/, '').replace(/_/g, ' ').toLowerCase(), set: has(k) })) })),
     services: [
       { id: 'fipe', name: 'Tabela FIPE', configured: true, connected: true, env: ENV_KEYS.fipe, note: has('FIPE_TOKEN') ? 'Com token (limite maior)' : 'Plano gratuito' },
       { id: 'plate', name: 'Consulta de placa', configured: has('PLATE_API_TOKEN'), connected: has('PLATE_API_TOKEN'), env: ENV_KEYS.plate },
@@ -60,9 +62,24 @@ r.get('/:id/connect', (req, res) => {
 const crm = (id) => {
   const c = crms[id];
   if (!c) throw Object.assign(new Error('CRM inválido'), { status: 400 });
-  if (!c.configured()) throw Object.assign(new Error(`${c.name} não configurado. Preencha ${ENV_KEYS[id].join(', ')} no .env`), { status: 400 });
+  if (!c.configured()) throw Object.assign(new Error(`${c.name} não configurado. Preencha as credenciais em Integrações > CRMs`), { status: 400 });
   return c;
 };
+
+// Client-entered CRM credentials: omitted field = keep, empty string = remove.
+r.put('/crm/:id/credentials', async (req, res) => {
+  if (req.user.role !== 'admin') throw Object.assign(new Error('Apenas administradores'), { status: 403 });
+  const c = crms[req.params.id];
+  if (!c) throw Object.assign(new Error('CRM inválido'), { status: 400 });
+  for (const k of ENV_KEYS[c.id]) {
+    if (req.body?.[k] === undefined) continue;
+    const v = String(req.body[k]).trim().slice(0, 2000);
+    if (v) { await q('INSERT INTO settings (k, v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [`cred:${k}`, v]); creds[k] = v; }
+    else { await q('DELETE FROM settings WHERE k=?', [`cred:${k}`]); delete creds[k]; }
+  }
+  await q('DELETE FROM integration_tokens WHERE provider=?', [c.id]); // drop cached OAuth token (Salesforce/Zoho)
+  res.json({ configured: c.configured() });
+});
 
 // Import leads/deals from a CRM into the local kanban.
 r.post('/crm/:id/pull', async (req, res) => {

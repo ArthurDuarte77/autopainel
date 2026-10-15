@@ -119,7 +119,7 @@ r.delete('/sellers/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------- Settings
-r.get('/settings', async (req, res) => res.json(Object.fromEntries((await q('SELECT k, v FROM settings')).map(x => [x.k, x.v]))));
+r.get('/settings', async (req, res) => res.json(Object.fromEntries((await q(`SELECT k, v FROM settings WHERE k NOT LIKE 'cred:%' AND k NOT LIKE 'plate:%'`)).map(x => [x.k, x.v]))));
 
 r.put('/settings', async (req, res) => {
   if (req.user.role !== 'admin') throw bad('Apenas administradores', 403);
@@ -127,7 +127,7 @@ r.put('/settings', async (req, res) => {
     if (!/^[a-z_]{1,64}$/.test(k)) throw bad(`Chave inválida: ${k}`);
     await q('INSERT INTO settings (k, v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, String(v ?? '')]);
   }
-  res.json(Object.fromEntries((await q('SELECT k, v FROM settings')).map(x => [x.k, x.v])));
+  res.json(Object.fromEntries((await q(`SELECT k, v FROM settings WHERE k NOT LIKE 'cred:%' AND k NOT LIKE 'plate:%'`)).map(x => [x.k, x.v])));
 });
 
 export default r;

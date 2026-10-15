@@ -1,7 +1,7 @@
 import express from 'express';
 import { q, one, waitDb } from './db.js';
 import { hashPassword, requireAuth } from './auth.js';
-import { env } from './http.js';
+import { env, creds } from './http.js';
 import auth from './routes/auth.js';
 import pub from './routes/public.js';
 import integrations, { publicIntegrations } from './routes/integrations.js';
@@ -42,6 +42,7 @@ app.use((err, req, res, next) => {
 });
 
 await waitDb();
+for (const { k, v } of await q(`SELECT k, v FROM settings WHERE k LIKE 'cred:%'`)) creds[k.slice(5)] = v;
 if (!(await one('SELECT id FROM users LIMIT 1'))) {
   await q('INSERT INTO users SET ?', [{ name: env('ADMIN_NAME', 'Administrador'), email: env('ADMIN_EMAIL', 'admin@autopainel.local'),
     password_hash: hashPassword(env('ADMIN_PASSWORD', 'admin123')), role: 'admin' }]);

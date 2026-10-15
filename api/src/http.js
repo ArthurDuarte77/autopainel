@@ -22,6 +22,8 @@ export async function http(url, { method = 'GET', headers = {}, body, form, time
   return data;
 }
 
-export const env = (k, d = '') => process.env[k] || d;
-export const has = (...keys) => keys.every(k => !!process.env[k]);
+// Client-entered credentials (settings k=cred:KEY, loaded on boot) override .env.
+export const creds = {};
+export const env = (k, d = '') => creds[k] || process.env[k] || d;
+export const has = (...keys) => keys.every(k => !!(creds[k] || process.env[k]));
 export const publicUrl = () => env('PUBLIC_URL', 'http://localhost:8080').replace(/\/$/, '');
