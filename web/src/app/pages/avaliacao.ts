@@ -52,7 +52,7 @@ const PARAMS = () => ({ margem: 12, preparacao: 2500, impostos: 3, comissao: 1.5
               <span class="nowrap">{{ r.price | brl }}</span>
             </div>
           } @empty {
-            <div class="muted small">{{ refsMsg || 'Nenhum anúncio semelhante encontrado.' }}</div>
+            <div class="muted small">Sem anúncios de referência.</div>
           }
           <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
             <span style="font-weight:600">Valor de mercado</span>
@@ -126,7 +126,6 @@ export class AvaliacaoPage {
   busy = false;
   v: any = {};
   refs: Array<{ title: string; price: number; url?: string }> = [];
-  refsMsg = '';
   params = PARAMS();
   market_value = 0;
   maxPrice = 0;
@@ -143,16 +142,15 @@ export class AvaliacaoPage {
     try {
       // Errors (invalid plate, API not configured, not found) are shown as toast; screen stays empty.
       const res: any = await this.api.act(() => this.api.get(`/appraisals/plate/${p}`));
-      this.v = {}; this.refs = []; this.refsMsg = ''; this.market_value = 0;
+      this.v = {}; this.refs = []; this.market_value = 0;
       if (!res?.model) return;
       this.v = {
         model: [res.brand, res.model, res.version].filter(Boolean).join(' '),
         year: res.year, color: res.color, plate: p, fipe_code: res.fipe_code, fipe_price: res.fipe_price || 0,
       };
-      try {
-        const m: any = await this.api.get('/appraisals/market', { q: [res.brand, res.model].filter(Boolean).join(' '), year: res.year });
-        this.refs = m?.refs || [];
-      } catch (e: any) { this.refsMsg = `Anúncios indisponíveis: ${e.message}`; }
+      // Listings are optional: on failure the value falls back to FIPE.
+      const m: any = await this.api.get('/appraisals/market', { q: [res.brand, res.model].filter(Boolean).join(' '), year: res.year }).catch(() => null);
+      this.refs = m?.refs || [];
       this.market_value = this.avg();
     } finally {
       this.recalc();
@@ -200,7 +198,6 @@ export class AvaliacaoPage {
     this.plate = a.plate || '';
     this.v = { model: a.model, year: a.year, color: a.color, plate: a.plate, fipe_code: a.fipe_code, fipe_price: Number(a.fipe_price) || 0 };
     this.refs = a.market_refs || [];
-    this.refsMsg = '';
     this.market_value = Number(a.market_value) || 0;
     const p = a.params || {}, d = PARAMS();
     this.params = {
