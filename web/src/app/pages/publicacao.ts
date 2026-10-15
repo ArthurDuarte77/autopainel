@@ -2,6 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api, BrlPipe } from '../core';
 
+// Main channels always visible; the rest only after "Mostrar outros canais".
+// Webmotors has no adapter yet: shown as a placeholder card, never in the grid.
+const MAIN = ['olx', 'mercadolivre', 'site', 'webmotors'];
+const WEBMOTORS = { id: 'webmotors', name: 'Webmotors', connected: false, unavailable: true };
+const ALL_KEY = 'ap_pub_all';
+
 @Component({
   selector: 'ap-publicacao', standalone: true, imports: [RouterLink, BrlPipe],
   template: `
@@ -11,33 +17,40 @@ import { Api, BrlPipe } from '../core';
   </div>
 
   @if (data(); as d) {
+    @let cards = shown(d);
+    @let cols = columns(d);
     <div class="grid g4">
-      @for (c of d.channels; track c.id) {
+      @for (c of cards; track c.id) {
         <div class="card">
           <div class="card-head" style="margin-bottom:8px">
             <h3>{{ c.name }}</h3>
-            <span class="dot" [class.green]="c.configured" [class.red]="!c.configured" [title]="c.configured ? 'Configurado' : 'Não configurado'"></span>
+            <span [class]="'badge ' + (c.connected ? 'green' : 'red')">{{ c.connected ? '✓ Conta conectada' : 'Não conectado' }}</span>
           </div>
-          <div class="small muted">{{ c.published }} publicados · {{ c.active }} ativos</div>
-          @if (!c.configured) { <div class="small mt" style="margin-top:8px"><a routerLink="/integracoes">Configurar integração →</a></div> }
-          <div class="actions mt" style="margin-top:10px">
-            <button class="btn sm" (click)="bulk(c, true)" [disabled]="busy">Publicar todos</button>
-            <button class="btn sm" (click)="bulk(c, false)" [disabled]="busy">Remover todos</button>
-          </div>
+          @if (c.unavailable) {
+            <div class="small muted">Integração com a Webmotors ainda não disponível.</div>
+          } @else {
+            <div class="small muted">{{ c.published }} publicados · {{ c.active }} ativos</div>
+            @if (!c.connected) { <div class="small" style="margin-top:8px"><a routerLink="/integracoes">Conectar conta →</a></div> }
+            <div class="actions mt" style="margin-top:10px">
+              <button class="btn sm" (click)="bulk(c, true)" [disabled]="busy">Publicar todos</button>
+              <button class="btn sm" (click)="bulk(c, false)" [disabled]="busy">Remover todos</button>
+            </div>
+          }
         </div>
       }
     </div>
+    <div style="margin-top:10px"><button class="btn sm" (click)="toggleAll()">{{ all ? 'Ocultar outros canais' : 'Mostrar outros canais' }}</button></div>
 
     <div class="card mt" style="padding:0">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Veículo</th><th>Preço</th>@for (c of d.channels; track c.id) { <th>{{ c.name }}</th> }</tr></thead>
+          <thead><tr><th>Veículo</th><th>Preço</th>@for (c of cols; track c.id) { <th>{{ c.name }}</th> }</tr></thead>
           <tbody>
             @for (v of d.vehicles; track v.id) {
               <tr>
                 <td><strong>{{ v.brand }} {{ v.model }}</strong><div class="muted small">{{ v.version }} · {{ v.year }} @if (v.status === 'Vendido') { · <span class="down">Vendido</span> }</div></td>
                 <td class="nowrap">{{ v.price | brl }}</td>
-                @for (c of d.channels; track c.id) {
+                @for (c of cols; track c.id) {
                   <td class="nowrap">
                     @let p = v.publications[c.id];
                     <div style="display:flex;align-items:center;gap:8px">
@@ -55,7 +68,7 @@ import { Api, BrlPipe } from '../core';
                   </td>
                 }
               </tr>
-            } @empty { <tr><td [attr.colspan]="d.channels.length + 2" class="empty">Nenhum veículo no estoque.</td></tr> }
+            } @empty { <tr><td [attr.colspan]="cols.length + 2" class="empty">Nenhum veículo no estoque.</td></tr> }
           </tbody>
         </table>
       </div>
@@ -67,8 +80,15 @@ export class PublicacaoPage {
   data = signal<any>(null);
   busy = false;
   cellBusy: Record<string, boolean> = {};
+  all = (() => { try { return localStorage.getItem(ALL_KEY) === '1'; } catch { return false; } })();
 
   constructor() { this.load(); }
+  toggleAll() { this.all = !this.all; try { localStorage.setItem(ALL_KEY, this.all ? '1' : ''); } catch {} }
+  columns(d: any) { return d.channels.filter((c: any) => this.all || MAIN.includes(c.id)); }
+  shown(d: any) {
+    const list = [...d.channels, ...(d.channels.some((c: any) => c.id === 'webmotors') ? [] : [WEBMOTORS])];
+    return list.filter((c: any) => this.all || MAIN.includes(c.id)).sort((a: any, b: any) => (MAIN.indexOf(a.id) + 1 || 99) - (MAIN.indexOf(b.id) + 1 || 99));
+  }
   async load() { const d = await this.api.act(() => this.api.get('/publications')); if (d) this.data.set(d); }
   color(s: string) { return ({ publicado: 'green', pendente: 'yellow', erro: 'red' } as any)[s] || ''; }
 

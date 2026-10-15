@@ -14,8 +14,10 @@ r.get('/', async (req, res) => {
   const vehicles = await q(`SELECT id, brand, model, version, year, price, plate, status, photos FROM vehicles
     WHERE status<>'Vendido' OR id IN (SELECT vehicle_id FROM publications WHERE status='publicado') ORDER BY created_at DESC`);
   const pubs = await q('SELECT * FROM publications');
+  const tokens = new Set((await q('SELECT provider FROM integration_tokens')).map(t => t.provider));
   res.json({
-    channels: Object.values(channels).map(c => ({ id: c.id, name: c.name, kind: c.kind, configured: c.configured(),
+    // connected = account actually linked (OAuth login done), not just credentials filled in.
+    channels: Object.values(channels).map(c => ({ id: c.id, name: c.name, kind: c.kind, configured: c.configured(), connected: c.oauth ? tokens.has(c.id) : c.configured(),
       active: pubs.filter(p => p.channel === c.id && p.active).length, published: pubs.filter(p => p.channel === c.id && p.status === 'publicado').length })),
     vehicles: vehicles.map(v => ({ ...v, photos: typeof v.photos === 'string' ? JSON.parse(v.photos) : v.photos || [],
       publications: Object.fromEntries(pubs.filter(p => p.vehicle_id === v.id).map(p => [p.channel, p])) })),
