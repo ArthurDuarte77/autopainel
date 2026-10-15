@@ -85,6 +85,7 @@ export class Shell {
     { path: '/financeiro', label: 'Financeiro', icon: 'wallet' },
     { path: '/avaliacao', label: 'Avaliação de compra', icon: 'calc' },
     { path: '/agenda', label: 'Agenda', icon: 'calendar' },
+    { path: '/integracoes', label: 'Integrações', icon: 'plug' },
   ];
   get initials() { return (this.auth.user()?.name || '?').split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase(); }
   constructor() { if (this.auth.token) this.auth.refresh().catch(() => { }); }
